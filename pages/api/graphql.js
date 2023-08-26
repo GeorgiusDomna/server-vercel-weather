@@ -2,6 +2,9 @@ import { ApolloServer } from '@apollo/server';
 import { startServerAndCreateNextHandler } from '@as-integrations/next';
 import { resolvers } from '../../src/schema/resolvers';
 import { typeDefs } from '../../src/schema/typeDefs';
+import 'dotenv/config';
+
+const allowOrigin = process.env.ALLOW_ORIGIN;
 
 const server = new ApolloServer({
   resolvers,
@@ -10,17 +13,25 @@ const server = new ApolloServer({
 
 const startServer = startServerAndCreateNextHandler(server);
 
-
-const handler = async (req, res) => {
-  res.setHeader('Access-Control-Allow-Credentials', true);
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', '*');
+const enableCors = fn => async (req, res) => {
+  res.setHeader('Access-Control-Allow-Credentials', true)
+  res.setHeader('Access-Control-Allow-Origin', allowOrigin)
+  res.setHeader('Access-Control-Allow-Methods', 'GET,DELETE,PATCH,POST,PUT')
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
+  )
 
   if (req.method === 'OPTIONS') {
-    res.status(200).end();
+    res.status(200).end()
+    return
   }
-  await startServer(req, res);
-};
 
-export default handler;
+  return await fn(req, res)
+}
+
+const handler = async (req, res) => {
+  await startServer(req, res);
+}
+
+module.exports = enableCors(handler)
